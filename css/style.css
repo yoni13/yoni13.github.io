@@ -32,3 +32,6 @@ p,a,input,label,textarea,span,ul,li{
     padding: 9px 26px;
     border-radius: 20px;
 }
+#intro .container{
+display: block;
+    text-align: center;}
