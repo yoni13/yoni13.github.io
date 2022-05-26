@@ -4,6 +4,7 @@
     background-color: var(--bs-light);
     border-radius: .3rem;  
 }
+
 #intro .jumbotron{
     color: white;
     background: url('../picture/addon.png');

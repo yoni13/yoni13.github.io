@@ -19,7 +19,7 @@ if (browserName == "Opera") {
 }
 if (browserName == "Chrome") {
     document.getElementById("link").setAttribute("href", "#");
-    document.getElementById("link").setAttribute("onclick", "alert('抱歉我很窮，付不起5美金的開發者註冊費😅')");
+    document.getElementById("link").setAttribute("onclick", "alert('提交了，等他審核完再來看吧！')");
 }
 if (browserName == "MS IE") {
     document.getElementById("link").setAttribute("href", "#");
