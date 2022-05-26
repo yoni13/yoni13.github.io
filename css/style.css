@@ -5,7 +5,14 @@
     border-radius: .3rem;  
 }
 #intro .jumbotron{
+    color: white;
+    background: url('../picture/addon.png');
+	background-size: cover;
+    background-repeat: no-repeat;
+    background-position: 50%;
     height: 70vh;
+    margin-bottom: 0px;
+	position:relative;
 }
 h1,h2,h3,h4,h5,h6{
     font-family: 'Noto Sans TC', sans-serif;
@@ -34,5 +41,5 @@ p,a,input,label,textarea,span,ul,li{
 }
 #intro .container{
     position: relative;top: 50%;
-    transform: translateY(90%);
+    transform: translateY(30%);
 }
