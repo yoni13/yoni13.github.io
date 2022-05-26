@@ -33,5 +33,6 @@ p,a,input,label,textarea,span,ul,li{
     border-radius: 20px;
 }
 #intro .container{
-display: block;
-    text-align: center;}
+    position: relative;top: 50%;
+    transform: translateY(90%);
+}
