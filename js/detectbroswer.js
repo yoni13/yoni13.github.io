@@ -11,7 +11,8 @@ var browserName = (function (agent) {
     }
 })(window.navigator.userAgent.toLowerCase());
 if (browserName == "Edge (chromium based)") {
-    document.getElementById("link").setAttribute("href", "https://microsoftedge.microsoft.com/addons/detail/%E6%9E%97%E5%A5%95%E4%BD%91%E5%96%9C%E6%AD%A1%E6%9D%8E%E9%87%87%E5%A9%95%E4%B9%8B%E6%96%B0%E5%88%86%E9%A0%81/bmmbjcpmnlapompldfijogaokepcnkoc");
+    document.getElementById("link").setAttribute("href", "#");
+    document.getElementById("link").setAttribute("onclick", "alert('提交了，等他審核完再來看吧！')");
 }
 if (browserName == "Opera") {
     document.getElementById("link").setAttribute("href", "#");
