@@ -1,0 +1,71 @@
+@import url('https://fonts.googleapis.com/css2?family=Kumar+One+Outline&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@100&display=swap');
+*{
+  font-family: 'Kumar One Outline', cursive;
+}
+
+body{background:#232323;}
+
+.centered{
+  position:absolute;
+  left:50%;
+  top:50%;
+  transform:translate(-18%,-50%); 
+}
+
+.neon-effect{
+  color:#fff;
+  letter-spacing:2px;
+}
+
+.neon-effect:nth-of-type(1){
+  text-shadow:
+    0 0 5px rgba(67,232,216, 1),
+    0 0 10px rgba(67,232,216, 1),
+    0 0 20px rgba(67,232,216, 1),
+    0 0 40px rgba(67,232,216, 1);
+  animation:neon-shine 2s linear infinite;
+  
+}
+
+.neon-effect:nth-of-type(2){
+  text-shadow:
+    0 0 5px rgba(247, 245, 41,.1),
+    0 0 10px rgba(247, 245, 41,1),
+    0 0 20px rgba(247, 245, 41,1),
+    0 0 40px rgba(247, 245, 41,1);
+   animation:neon-shine 2s 1s linear infinite;
+}
+ 
+.neon-effect:nth-of-type(3){
+  text-shadow:
+    0 0 5px rgba(255, 65, 65, 1),
+    0 0 10px rgba(255, 65, 65, 1),
+    0 0 20px rgba(255, 65, 65, 1),
+    0 0 40px rgba(255, 65, 65, 1);
+  animation:neon-shine 2s linear infinite;
+}
+@keyframes neon-shine{
+  0%{opacity:1;}
+  80%{opacity:0;}
+  90%{opacity:0;}
+  100%{
+  color:#232323;}
+}
+#searchbar {
+  transform:translate(-35%,10%); 
+  font-family: 'Noto Sans TC', sans-serif;
+  background-color: white;
+  border: 1px;
+  border-radius: 22px;
+  border-color: #232323;
+  width: 330px;
+  height: 40px;
+  color: black;
+  font-size: 15px;
+  padding-left: 40px;
+  background-size: 22px 22px;
+  background-repeat: no-repeat;
+  background-position: 10px 0.7rem;
+  background-image: url('../assets/img/g.svg');
+}

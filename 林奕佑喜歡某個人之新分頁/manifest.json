@@ -1,0 +1,15 @@
+{
+  "manifest_version": 3,
+  "name": "林某佑喜歡某個人之新分頁",
+  "description": "林某佑喜歡某個人是不可否認的事實，也是國際、兩岸公認現狀",
+  "version": "0.0.0.5",
+  "chrome_url_overrides": {
+    "newtab": "./public/index.html"
+  },
+  "action": {
+    "default_icon": "./assets/img/icon128.png"
+  },
+  "icons": {
+    "128": "./assets/img/icon128.png"
+  }
+}
