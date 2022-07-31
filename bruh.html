@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<head>
+    <title>Bruh</title>
+</head>
+<div class="scrolling-words-container">
+  <div class="scrolling-words-box">
+    <ul>
+      <li style="color: #15ff00">林X佑</li>
+      <li style="color: #00ffff">李X寰</li>
+      <li style="color: #ea4335">錢X程</li>
+    </ul>
+  </div>
+  <s><span style="color: #5f6368">小GG</span></s>
+</div>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300&display=swap');
+body {
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+span{
+    font-family: 'Noto Sans TC', sans-serif;
+}
+.scrolling-words-container {
+  display: flex;
+  align-items: center;
+  font-size: 2rem;
+  font-weight: 600;
+}
+
+.scrolling-words-box {
+  height: 3rem;
+  margin: auto;
+  overflow: hidden;
+}
+.scrolling-words-box ul {
+  margin: 0 0.625rem;
+  padding: 0;
+  animation: scrollUp 4s infinite;
+}
+.scrolling-words-box ul li {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  height: 3rem;
+  list-style: none;
+}
+
+@keyframes scrollUp {
+  15%, 25% {
+    transform: translateY(-20%);
+  }
+  40%, 50% {
+    transform: translateY(-40%);
+  }
+  65%, 75% {
+    transform: translateY(-60%);
+  }
+  90%, 100% {
+    transform: translateY(-80%);
+  }
+}
+</style>
