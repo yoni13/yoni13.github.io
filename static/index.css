@@ -51,11 +51,9 @@ hr {
   border: none;
   height: 2px;
   background: linear-gradient(to right, #d1d1d1, #000000);
-  max-width: 60%;
-  @media (max-width: 600px) {
-    hr {
-      max-width: 80%;
-    }
+  max-width: 80%;
+  @media (min-width: 800px) {
+    max-width: 60%;
   }
   margin-left: 0;
   margin-right: auto;
