@@ -48,19 +48,8 @@ a{
 }
 
 hr {
-  /* 1. Reset the default <hr> style */
-  border: 0;
-  height: 20px; /* Provides vertical space for the background effect */
+  border: none;
+  height: 2px;
+  background: linear-gradient(to right, #d1d1d1, #222);
 
-  /* 2. Create the dot pattern with a radial gradient */
-  background-image: radial-gradient(
-      circle,      /* Shape of the gradient */
-      #ccc 2px,   /* A 1px solid dot of color #ccc */
-      transparent 1px /* Fade to transparent */
-  );
-
-  /* 3. Set the size and repetition of the pattern */
-  background-size: 9px 20px;   /* Controls the spacing and size of each dot */
-  background-repeat: repeat-x;  /* Repeat the pattern horizontally */
-  background-position: center;  /* Center the dots vertically */
 }
