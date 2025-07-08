@@ -50,6 +50,13 @@ a{
 hr {
   border: none;
   height: 2px;
-  background: linear-gradient(to right, #d1d1d1, #222);
-
+  background: linear-gradient(to right, #d1d1d1, #000000);
+  max-width: 60%;
+  @media (max-width: 600px) {
+    hr {
+      max-width: 80%;
+    }
+  }
+  margin-left: 0;
+  margin-right: auto;
 }
