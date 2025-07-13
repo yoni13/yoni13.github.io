@@ -151,7 +151,7 @@ try:
 
     index_posts_div = index_soup.find(id=INDEX_POSTS_DIV_ID)
     if isinstance(index_posts_div, Tag):
-        new_post_div = index_soup.new_tag("div", attrs={"class": "post-summary"})
+        new_post_div = index_soup.new_tag("div")
         
         title_h2 = index_soup.new_tag("h2"); title_h2.string = post_title
         subtitle_h6 = index_soup.new_tag("h6"); subtitle_h6.string = post_subtitle
@@ -163,7 +163,7 @@ try:
         index_posts_div.insert(0, new_post_div)
         
         if POST_ID > 1:
-            new_post_div.insert_after(index_soup.new_tag("hr"))
+            new_post_div.insert_before(index_soup.new_tag("hr"))
         
         with open(INDEX_HTML_PATH, 'w', encoding='utf-8') as file:
             file.write(cast(str, index_soup.prettify()))
