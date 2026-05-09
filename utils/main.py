@@ -3,6 +3,7 @@ import bs4
 from pathlib import Path
 from typing import cast
 from bs4.element import Tag
+from datetime import date as Date
 import json
 import sys
 import shutil
@@ -10,6 +11,9 @@ import re
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 ROOT_DIR = SCRIPT_DIR.parent
+
+BASE_URL = "https://yoni13.github.io"
+SITEMAP_PATH = ROOT_DIR / "sitemap.xml"
 
 POSTS_METADATA_PATH = ROOT_DIR / "posts" / "post.json"
 GENERATED_POSTS_DIR = ROOT_DIR / "posts"
@@ -196,6 +200,40 @@ def rebuild_index(posts: list[dict]) -> None:
     print("  -> index.html updated.")
 
 
+def _parse_post_date(raw: str) -> str:
+    """Convert 'YYYY/M/D' to 'YYYY-MM-DD', falling back to today on parse failure."""
+    try:
+        parts = raw.strip().split("/")
+        return Date(int(parts[0]), int(parts[1]), int(parts[2])).isoformat()
+    except Exception:
+        return Date.today().isoformat()
+
+
+def generate_sitemap(posts: list[dict]) -> None:
+    """Write sitemap.xml to the repo root."""
+    today = Date.today().isoformat()
+
+    urls: list[str] = []
+
+    # Home page — always today's date as lastmod.
+    urls.append(f"  <url>\n    <loc>{BASE_URL}/</loc>\n    <lastmod>{today}</lastmod>\n  </url>")
+
+    for post in sorted(posts, key=lambda p: p["POSTID"]):
+        loc = f"{BASE_URL}/posts/{post['POSTID']}.html"
+        lastmod = _parse_post_date(post.get("Date", ""))
+        urls.append(f"  <url>\n    <loc>{loc}</loc>\n    <lastmod>{lastmod}</lastmod>\n  </url>")
+
+    xml = (
+        '<?xml version="1.0" encoding="UTF-8"?>\n'
+        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+        + "\n".join(urls)
+        + "\n</urlset>\n"
+    )
+
+    SITEMAP_PATH.write_text(xml, encoding="utf-8")
+    print(f"  -> wrote '{SITEMAP_PATH}'")
+
+
 def markdown_post_id(path: Path) -> int | None:
     """Extract the leading post ID from a markdown filename like '2-slug.md'."""
     m = re.match(r"^(\d+)", path.stem)
@@ -216,6 +254,7 @@ def cmd_add(markdown_path: Path) -> None:
     save_metadata(meta)
 
     rebuild_index(meta["posts"])
+    generate_sitemap([p for p in meta["posts"] if p])
     print("--- Done ---")
 
 
@@ -245,6 +284,7 @@ def cmd_regen() -> None:
     save_metadata(meta)
 
     rebuild_index(all_posts)
+    generate_sitemap(all_posts)
     print(f"--- Regenerated {len(all_posts)} posts ---")
 
 
