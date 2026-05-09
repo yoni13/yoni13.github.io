@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Samsung Services</title>
+<style>
+    body {
+        margin: 0;
+        padding: 0;
+        background-color: #050505;
+        height: 100vh;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        color: white;
+        display: flex;
+        justify-content: center;
+        overflow: hidden;
+    }
+
+    .ui-container {
+        width: 100%;
+        max-width: 400px;
+        display: flex;
+        flex-direction: column;
+        padding: 40px 20px 30px 20px;
+        box-sizing: border-box;
+        height: 100%;
+    }
+
+    .header h1 {
+        font-size: 24px;
+        font-weight: 500;
+        margin: 0 0 5px 0;
+        line-height: 1.2;
+    }
+
+    .header p {
+        font-size: 13px;
+        color: rgba(255,255,255,0.7);
+        margin: 0;
+    }
+
+    .center-display {
+        flex-grow: 1;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .number {
+        font-size: 64px;
+        font-weight: 400;
+        transition: transform 0.1s ease-out;
+    }
+
+    .controls {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .pill-button {
+        background-color: #383a3f;
+        border-radius: 50px;
+        display: flex;
+        align-items: center;
+        padding: 8px;
+        cursor: pointer;
+        transition: transform 0.1s, background-color 0.2s;
+        user-select: none;
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    .pill-button:active {
+        transform: scale(0.97);
+        background-color: #4a4d53;
+    }
+
+    .icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin-right: 15px;
+        font-size: 20px;
+    }
+
+    .icon-green {
+        background-color: #72d653;
+        color: #2c5c1d;
+    }
+
+    .icon-red {
+        background-color: #f28b96;
+        color: #6e2730;
+        transform: rotate(135deg);
+    }
+
+    .button-text {
+        font-size: 16px;
+        font-weight: 500;
+        color: #e0e0e0;
+    }
+
+</style>
+</head>
+<body>
+
+<div class="ui-container">
+    <div class="header">
+        <h1>Your Samsung Galaxy J6<br>is gooning</h1>
+        <p>Samsung services detected gooning</p>
+    </div>
+
+    <div class="center-display">
+        <div class="number" id="goon-counter">38</div>
+    </div>
+
+    <div class="controls">
+        <div class="pill-button" onclick="turnOff()">
+            <div class="icon icon-green">✓</div>
+            <div class="button-text">turn off (please do)</div>
+        </div>
+
+        <div class="pill-button" onclick="letItGoon()">
+            <div class="icon icon-red">✆</div>
+            <div class="button-text">let it goon</div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let counter = 38;
+    const counterDisplay = document.getElementById('goon-counter');
+
+    function turnOff() {
+        document.body.innerHTML = '<div style="display: flex; height: 100vh; align-items: center; justify-content: center;"><h1 style="color: white; font-family: sans-serif; text-align: center;">Disaster averted.<br><span style="font-size: 16px; color: gray;">You saved the Galaxy.</span></h1></div>';
+    }
+
+    function letItGoon() {
+        counter++;
+        counterDisplay.innerText = counter;
+        
+        // Add a slight pop effect to the number
+        counterDisplay.style.transform = 'scale(1.2)';
+        setTimeout(() => {
+            counterDisplay.style.transform = 'scale(1)';
+        }, 100);
+
+        // The background gets slightly redder the more it goons
+        const intensity = Math.min(counter - 38, 50) * 0.005;
+        document.body.style.backgroundColor = `rgba(${5 + (intensity * 200)}, 5, 5, 1)`;
+    }
+</script>
+
+</body>
+</html>
