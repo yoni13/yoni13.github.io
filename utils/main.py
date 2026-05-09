@@ -1,12 +1,12 @@
 import markdown
 import bs4
-# This is to ask vscode to shutup about typing errors
 from pathlib import Path
 from typing import cast
 from bs4.element import Tag
 import json
 import sys
 import shutil
+import re
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 ROOT_DIR = SCRIPT_DIR.parent
@@ -14,22 +14,11 @@ ROOT_DIR = SCRIPT_DIR.parent
 POSTS_METADATA_PATH = ROOT_DIR / "posts" / "post.json"
 GENERATED_POSTS_DIR = ROOT_DIR / "posts"
 STATIC_IMAGES_DIR = ROOT_DIR / "static" / "images"
+MARKDOWNS_DIR = ROOT_DIR / "markdowns"
 INDEX_HTML_PATH = ROOT_DIR / "index.html"
 INDEX_POSTS_DIV_ID = "indexposts"
 
-HTML_HEADER_TEMPLATE = r"""
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <title>{title} | Legendyang's Blog</title>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="/static/index.css">
-</head>
-
-<body>
-<a href="/" style="text-decoration: none;">
-<pre>
+ASCII_BANNER = r"""
     _                           _                         _       _     _
     | |                         | |                       ( )     | |   | |
     | | ___  __ _  ___ _ __   __| |_   _  __ _ _ __   __ _|/ ___  | |__ | | ___   __ _
@@ -38,153 +27,240 @@ HTML_HEADER_TEMPLATE = r"""
     |_|\___|\__, |\___|_| |_|\__,_|\__, |\__,_|_| |_|\__, | |___/ |_.__/|_|\___/ \__, |
              __/ |                  __/ |             __/ |                       __/ |
             |___/                  |___/             |___/                       |___/
-</pre>
-</a>
+"""
+
+HTML_HEADER_TEMPLATE = """\
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>{title} | Legendyang's Blog</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="/static/index.css">
+</head>
+<body>
+<header>
+<a href="/" style="text-decoration: none;"><pre>{banner}</pre></a>
+</header>
+<main>
+<article>
+"""
+
+HTML_FOOTER = """\
+</article>
+</main>
+</body>
+</html>
 """
 
 
-if len(sys.argv) < 2:
-    print(f"Usage: uv run {Path(__file__).name} <markdown_file_path>")
-    sys.exit(1)
-
-markdown_file_path = Path(sys.argv[1]).resolve()
-if not markdown_file_path.is_file():
-    print(f"Error: File '{markdown_file_path}' not found.")
-    sys.exit(1)
-
-print(f"Processing markdown file: {markdown_file_path.name}")
-
-
-try:
-    with open(POSTS_METADATA_PATH, "r", encoding="utf-8") as f:
-        posts_metadata = json.load(f)
-except (FileNotFoundError, json.JSONDecodeError):
-    posts_metadata = {"num_posts": 0, "posts": []}
-    print("Warning: post.json not found or invalid. Starting from scratch.")
-
-POST_ID = posts_metadata.get("num_posts", 0) + 1
-print(f"Assigning new Post ID: {POST_ID}")
-
-
-with open(markdown_file_path, 'r', encoding='utf-8') as file:
-    markdown_content = file.read()
-
-html_body_content = markdown.markdown(markdown_content)
-soup = bs4.BeautifulSoup(html_body_content, "html.parser")
-
-title_tag = soup.find("h1")
-if not isinstance(title_tag, Tag):
-    print("Error: <h1> tag for the post title was not found in the markdown file.")
-    sys.exit(1)
-post_title = title_tag.get_text(strip=True)
-
-date_tag = soup.find("h5")
-if not isinstance(date_tag, Tag):
-    print("Error: <h5> tag for the post date was not found in the markdown file.")
-    sys.exit(1)
-post_date = date_tag.get_text(strip=True)
-
-subtitle_tag = soup.find("h6")
-if not isinstance(subtitle_tag, Tag):
-    print("Error: <h6> tag for the post subtitle was not found in the markdown file.")
-    sys.exit(1)
-post_subtitle = subtitle_tag.get_text(strip=True)
-
-print(f"Extracted Title: '{post_title}'")
-
-
-new_post_images_dir = STATIC_IMAGES_DIR / str(POST_ID)
-new_post_images_dir.mkdir(parents=True, exist_ok=True)
-
-img_tags = cast(list[Tag], soup.find_all("img"))
-for idx, img_tag in enumerate(img_tags, start=1):
-    original_src_val = img_tag.get("src")
-    if not original_src_val or isinstance(original_src_val, list):
-        print(f"Warning: Found an <img> tag with an invalid 'src' attribute: {original_src_val}. Skipping.")
-        continue
-    
-    original_src = str(original_src_val)
-    original_image_path = markdown_file_path.parent / original_src
-
-    if not original_image_path.is_file():
-        print(f"Warning: Image file not found at '{original_image_path}'. Skipping.")
-        continue
-
-    new_image_filename = f"img{idx}{original_image_path.suffix}"
-    new_image_path_fs = new_post_images_dir / new_image_filename
-    new_image_path_web = f"/static/images/{POST_ID}/{new_image_filename}"
-
+def load_metadata() -> dict:
     try:
-        shutil.copy2(original_image_path, new_image_path_fs)
-        img_tag["src"] = new_image_path_web
-        print(f"  -> Processed image: '{original_src}' -> '{new_image_path_web}'")
-
-        if original_image_path.resolve() != new_image_path_fs.resolve():
-            try:
-                original_image_path.unlink()
-                print(f"  -> Removed old image: '{original_image_path}'")
-            except Exception as e:
-                print(f"Warning: Could not remove old image '{original_image_path}': {e}")
-    except Exception as e:
-        print(f"Warning: Could not copy image '{original_src}': {e}")
+        with open(POSTS_METADATA_PATH, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return {"num_posts": 0, "posts": []}
 
 
-final_header = HTML_HEADER_TEMPLATE.format(title=post_title)
-full_html_string = final_header + str(soup) + "\n</body>\n</html>"
-
-final_soup = bs4.BeautifulSoup(full_html_string, "html.parser")
-
-prettified_html = cast(str, final_soup.prettify())
-
-output_html_path = GENERATED_POSTS_DIR / f"{POST_ID}.html"
-output_html_path.parent.mkdir(parents=True, exist_ok=True)
-with open(output_html_path, "w", encoding="utf-8") as file:
-    file.write(prettified_html)
-
-print(f"Successfully converted markdown to '{output_html_path}'")
+def save_metadata(meta: dict) -> None:
+    with open(POSTS_METADATA_PATH, "w", encoding="utf-8") as f:
+        json.dump(meta, f, ensure_ascii=False, indent=4)
 
 
-print("Updating index.html...")
-try:
-    with open(INDEX_HTML_PATH, "r", encoding="utf-8") as f:
+def parse_markdown(markdown_path: Path) -> tuple[bs4.BeautifulSoup, str, str, str]:
+    """Convert a markdown file to a BeautifulSoup object and extract metadata."""
+    content = markdown_path.read_text(encoding="utf-8")
+    html_body = markdown.markdown(content, extensions=["fenced_code"])
+    soup = bs4.BeautifulSoup(html_body, "html.parser")
+
+    title_tag = soup.find("h1")
+    if not isinstance(title_tag, Tag):
+        print("Error: <h1> (# Title) not found in markdown.")
+        sys.exit(1)
+
+    date_tag = soup.find("h5")
+    if not isinstance(date_tag, Tag):
+        print("Error: <h5> (##### Date) not found in markdown.")
+        sys.exit(1)
+
+    subtitle_tag = soup.find("h6")
+    if not isinstance(subtitle_tag, Tag):
+        print("Error: <h6> (###### Subtitle) not found in markdown.")
+        sys.exit(1)
+
+    return soup, title_tag.get_text(strip=True), subtitle_tag.get_text(strip=True), date_tag.get_text(strip=True)
+
+
+def process_images(soup: bs4.BeautifulSoup, post_id: int, markdown_path: Path) -> None:
+    """Copy images from markdown directory to static/images/{id}/ and update src attributes."""
+    images_dir = STATIC_IMAGES_DIR / str(post_id)
+    images_dir.mkdir(parents=True, exist_ok=True)
+
+    for idx, img_tag in enumerate(cast(list[Tag], soup.find_all("img")), start=1):
+        src_val = img_tag.get("src")
+        if not src_val or isinstance(src_val, list):
+            continue
+
+        src = str(src_val)
+        if src.startswith("/static/"):
+            # Already processed in a previous run — leave it alone.
+            continue
+
+        original_path = (markdown_path.parent / src).resolve()
+        if not original_path.is_file():
+            # Image was already moved on first generation — look for it in static.
+            existing = sorted((STATIC_IMAGES_DIR / str(post_id)).glob(f"img{idx}.*"))
+            if existing:
+                img_tag["src"] = f"/static/images/{post_id}/{existing[0].name}"
+                print(f"  -> image already at '/static/images/{post_id}/{existing[0].name}'")
+            else:
+                print(f"  Warning: image not found at '{original_path}', skipping.")
+            continue
+
+        new_filename = f"img{idx}{original_path.suffix}"
+        dest_path = images_dir / new_filename
+        web_path = f"/static/images/{post_id}/{new_filename}"
+
+        try:
+            shutil.copy2(original_path, dest_path)
+            img_tag["src"] = web_path
+            print(f"  -> image: '{src}' → '{web_path}'")
+            if original_path.resolve() != dest_path.resolve():
+                try:
+                    original_path.unlink()
+                except Exception as e:
+                    print(f"  Warning: could not remove '{original_path}': {e}")
+        except Exception as e:
+            print(f"  Warning: could not copy '{src}': {e}")
+
+
+def generate_post(markdown_path: Path, post_id: int) -> dict:
+    """Generate a post HTML file from a markdown file. Returns post metadata dict."""
+    print(f"Generating post {post_id} from '{markdown_path.name}'...")
+
+    soup, title, subtitle, date = parse_markdown(markdown_path)
+    process_images(soup, post_id, markdown_path)
+
+    header = HTML_HEADER_TEMPLATE.format(title=title, banner=ASCII_BANNER)
+    full_html = header + str(soup) + HTML_FOOTER
+
+    final_soup = bs4.BeautifulSoup(full_html, "html.parser")
+    output_path = GENERATED_POSTS_DIR / f"{post_id}.html"
+    output_path.write_text(cast(str, final_soup.prettify()), encoding="utf-8")
+    print(f"  -> wrote '{output_path}'")
+
+    return {"POSTID": post_id, "Title": title, "Subtitle": subtitle, "Date": date}
+
+
+def rebuild_index(posts: list[dict]) -> None:
+    """Rebuild index.html from scratch using the given list of post metadata dicts."""
+    print("Rebuilding index.html...")
+
+    index_html = ROOT_DIR / "index.html"
+    with open(index_html, "r", encoding="utf-8") as f:
         index_soup = bs4.BeautifulSoup(f, "html.parser")
 
-    index_posts_div = index_soup.find(id=INDEX_POSTS_DIV_ID)
-    if isinstance(index_posts_div, Tag):
-        new_post_div = index_soup.new_tag("div")
-        
-        title_h2 = index_soup.new_tag("h2"); title_h2.string = post_title
-        subtitle_h6 = index_soup.new_tag("h6"); subtitle_h6.string = post_subtitle
-        date_h4 = index_soup.new_tag("h4"); date_h4.string = post_date
-        read_more_a = index_soup.new_tag("a", href=f"/posts/{POST_ID}.html", style="color: inherit;"); read_more_a.string = "Read more"
+    posts_div = index_soup.find(id=INDEX_POSTS_DIV_ID)
+    if not isinstance(posts_div, Tag):
+        print(f"Error: element id='{INDEX_POSTS_DIV_ID}' not found in index.html.")
+        return
 
-        new_post_div.extend([title_h2, subtitle_h6, date_h4, read_more_a, index_soup.new_tag("br")])
-        
-        index_posts_div.insert(0, new_post_div)
-        
-        if POST_ID > 1:
-            new_post_div.insert_before(index_soup.new_tag("hr"))
-        
-        with open(INDEX_HTML_PATH, 'w', encoding='utf-8') as file:
-            file.write(cast(str, index_soup.prettify()))
-        print("Successfully updated index.html.")
-    else:
-        print(f"Warning: Could not find element with id='{INDEX_POSTS_DIV_ID}' in index.html. Skipping update.")
-except FileNotFoundError:
-    print(f"Error: {INDEX_HTML_PATH} not found. Cannot update index.")
+    # Clear existing post entries (keep the div itself).
+    posts_div.clear()
+
+    # Insert posts newest-first (highest ID first).
+    for post in sorted(posts, key=lambda p: p["POSTID"], reverse=True):
+        hr = index_soup.new_tag("hr")
+        div = index_soup.new_tag("div")
+
+        h2 = index_soup.new_tag("h2")
+        h2.string = post["Title"]
+
+        h6 = index_soup.new_tag("h6")
+        h6.string = post.get("Subtitle", "")
+
+        h4 = index_soup.new_tag("h4")
+        h4.string = post.get("Date", "")
+
+        a = index_soup.new_tag("a", href=f"/posts/{post['POSTID']}.html")
+        a.string = "Read more"
+
+        div.extend([h2, h6, h4, a, index_soup.new_tag("br")])
+        posts_div.extend([hr, div])
+
+    posts_div.append(index_soup.new_tag("hr"))
+    posts_div.append(index_soup.new_tag("br"))
+
+    with open(index_html, "w", encoding="utf-8") as f:
+        f.write(cast(str, index_soup.prettify()))
+    print("  -> index.html updated.")
 
 
-print("Updating post metadata JSON...")
-new_post_record = {"POSTID": POST_ID, "Title": post_title}
+def markdown_post_id(path: Path) -> int | None:
+    """Extract the leading post ID from a markdown filename like '2-slug.md'."""
+    m = re.match(r"^(\d+)", path.stem)
+    return int(m.group(1)) if m else None
 
-while len(posts_metadata["posts"]) < POST_ID:
-    posts_metadata["posts"].append(None)
 
-posts_metadata["posts"][POST_ID - 1] = new_post_record
-posts_metadata["num_posts"] = POST_ID
+def cmd_add(markdown_path: Path) -> None:
+    meta = load_metadata()
+    post_id = meta.get("num_posts", 0) + 1
 
-with open(POSTS_METADATA_PATH, "w", encoding="utf-8") as json_file:
-    json.dump(posts_metadata, json_file, ensure_ascii=False, indent=4)
+    post_meta = generate_post(markdown_path, post_id)
 
-print("Post metadata updated successfully.")
-print("--- Script finished ---")
+    # Update metadata JSON.
+    while len(meta["posts"]) < post_id:
+        meta["posts"].append(None)
+    meta["posts"][post_id - 1] = post_meta
+    meta["num_posts"] = post_id
+    save_metadata(meta)
+
+    rebuild_index(meta["posts"])
+    print("--- Done ---")
+
+
+def cmd_regen() -> None:
+    md_files = sorted(
+        [p for p in MARKDOWNS_DIR.glob("*.md") if markdown_post_id(p) is not None],
+        key=lambda p: markdown_post_id(p),  # type: ignore[arg-type]
+    )
+
+    if not md_files:
+        print("No markdown files found in markdowns/.")
+        return
+
+    all_posts: list[dict] = []
+    for md_path in md_files:
+        post_id = markdown_post_id(md_path)
+        assert post_id is not None
+        post_meta = generate_post(md_path, post_id)
+        all_posts.append(post_meta)
+
+    # Rebuild metadata JSON.
+    max_id = max(p["POSTID"] for p in all_posts)
+    posts_list: list[dict | None] = [None] * max_id
+    for p in all_posts:
+        posts_list[p["POSTID"] - 1] = p
+    meta = {"num_posts": max_id, "posts": posts_list}
+    save_metadata(meta)
+
+    rebuild_index(all_posts)
+    print(f"--- Regenerated {len(all_posts)} posts ---")
+
+
+# ── Entry point ──────────────────────────────────────────────────────────────
+
+if len(sys.argv) < 2:
+    print(f"Usage:")
+    print(f"  uv run {Path(__file__).name} <markdown_file>   # add a new post")
+    print(f"  uv run {Path(__file__).name} --regen           # regenerate all posts")
+    sys.exit(1)
+
+if sys.argv[1] == "--regen":
+    cmd_regen()
+else:
+    md = Path(sys.argv[1]).resolve()
+    if not md.is_file():
+        print(f"Error: '{md}' not found.")
+        sys.exit(1)
+    cmd_add(md)
