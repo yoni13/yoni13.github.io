@@ -40,11 +40,12 @@ HTML_HEADER_TEMPLATE = """\
     <title>{title} | Legendyang's Blog</title>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="{subtitle}">
     <link rel="stylesheet" href="/static/index.css">
 </head>
 <body>
 <header>
-<a href="/" style="text-decoration: none;"><pre>{banner}</pre></a>
+<a href="/" style="text-decoration: none;"><pre aria-hidden="true">{banner}</pre></a>
 </header>
 <main>
 <article>
@@ -145,7 +146,7 @@ def generate_post(markdown_path: Path, post_id: int) -> dict:
     soup, title, subtitle, date = parse_markdown(markdown_path)
     process_images(soup, post_id, markdown_path)
 
-    header = HTML_HEADER_TEMPLATE.format(title=title, banner=ASCII_BANNER)
+    header = HTML_HEADER_TEMPLATE.format(title=title, subtitle=subtitle, banner=ASCII_BANNER)
     full_html = header + str(soup) + HTML_FOOTER
 
     final_soup = bs4.BeautifulSoup(full_html, "html.parser")
