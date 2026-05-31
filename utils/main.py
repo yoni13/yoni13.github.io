@@ -42,6 +42,7 @@ HTML_HEADER_TEMPLATE = """\
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="{subtitle}">
     <link rel="stylesheet" href="/static/index.css">
+    <link rel="canonical" href="https://yoni13.github.io/posts/{post_id}.html">
 </head>
 <body>
 <header>
@@ -146,7 +147,7 @@ def generate_post(markdown_path: Path, post_id: int) -> dict:
     soup, title, subtitle, date = parse_markdown(markdown_path)
     process_images(soup, post_id, markdown_path)
 
-    header = HTML_HEADER_TEMPLATE.format(title=title, subtitle=subtitle, banner=ASCII_BANNER)
+    header = HTML_HEADER_TEMPLATE.format(title=title, subtitle=subtitle, post_id=post_id, banner=ASCII_BANNER)
     full_html = header + str(soup) + HTML_FOOTER
 
     final_soup = bs4.BeautifulSoup(full_html, "html.parser")
