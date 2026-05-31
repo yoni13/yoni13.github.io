@@ -5,19 +5,22 @@
             "POSTID": 1,
             "Title": "A new blog, a new start.",
             "Subtitle": "I ditched my old ghost blog and started a new one.",
-            "Date": "2025/7/6"
+            "Date": "2025/7/6",
+            "Lang": "en"
         },
         {
             "POSTID": 2,
             "Title": "A tool to start android apps via intent",
             "Subtitle": "Start hidden android apps via intent, why those websites has lots of ads.....",
-            "Date": "2025/12/10"
+            "Date": "2025/12/10",
+            "Lang": "en"
         },
         {
             "POSTID": 3,
             "Title": "技能競賽初賽心得文",
             "Subtitle": "技能競賽初賽心得文，覺得我文筆好爛 :<",
-            "Date": "2026/5/9"
+            "Date": "2026/5/9",
+            "Lang": "zh-TW"
         }
     ]
 }

@@ -8,11 +8,19 @@ import json
 import sys
 import shutil
 import re
+import html
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 ROOT_DIR = SCRIPT_DIR.parent
 
 BASE_URL = "https://yoni13.github.io"
+SITE_NAME = "Legendyang's Blog"
+AUTHOR_NAME = "legendyang"
+HOME_TITLE = "legendyang's Blog"
+HOME_DESCRIPTION = (
+    "legendyang's personal blog about cybersecurity, Android tooling, CTF notes, "
+    "and programming experiments."
+)
 SITEMAP_PATH = ROOT_DIR / "sitemap.xml"
 
 POSTS_METADATA_PATH = ROOT_DIR / "posts" / "post.json"
@@ -21,6 +29,7 @@ STATIC_IMAGES_DIR = ROOT_DIR / "static" / "images"
 MARKDOWNS_DIR = ROOT_DIR / "markdowns"
 INDEX_HTML_PATH = ROOT_DIR / "index.html"
 INDEX_POSTS_DIV_ID = "indexposts"
+LANG_COMMENT_RE = re.compile(r"<!--\s*lang\s*:\s*([A-Za-z0-9_-]+)\s*-->\s*", re.IGNORECASE)
 
 ASCII_BANNER = r"""
     _                           _                         _       _     _
@@ -35,14 +44,27 @@ ASCII_BANNER = r"""
 
 HTML_HEADER_TEMPLATE = """\
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{lang}">
 <head>
-    <title>{title} | Legendyang's Blog</title>
+    <title>{title} | {site_name}</title>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="{subtitle}">
+    <meta name="description" content="{description}">
+    <meta name="author" content="{author}">
+    <meta name="robots" content="index, follow">
+    <meta property="og:site_name" content="{site_name}">
+    <meta property="og:type" content="article">
+    <meta property="og:title" content="{title} | {site_name}">
+    <meta property="og:description" content="{description}">
+    <meta property="og:url" content="{canonical}">
+    <meta property="article:published_time" content="{published_date}">
+    <meta property="article:author" content="{author}">
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="{title} | {site_name}">
+    <meta name="twitter:description" content="{description}">
     <link rel="stylesheet" href="/static/index.css">
-    <link rel="canonical" href="https://yoni13.github.io/posts/{post_id}.html">
+    <link rel="canonical" href="{canonical}">
+    <script type="application/ld+json">{structured_data}</script>
 </head>
 <body>
 <header>
@@ -54,6 +76,42 @@ HTML_HEADER_TEMPLATE = """\
 
 HTML_FOOTER = """\
 </article>
+</main>
+</body>
+</html>
+"""
+
+INDEX_HTML_TEMPLATE = """\
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>{title}</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="{description}">
+    <meta name="author" content="{author}">
+    <meta name="robots" content="index, follow">
+    <meta property="og:site_name" content="{site_name}">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="{title}">
+    <meta property="og:description" content="{description}">
+    <meta property="og:url" content="{canonical}">
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="{title}">
+    <meta name="twitter:description" content="{description}">
+    <link rel="stylesheet" href="/static/index.css">
+    <link rel="canonical" href="{canonical}">
+    <link rel="sitemap" type="application/xml" href="/sitemap.xml">
+    <script type="application/ld+json">{structured_data}</script>
+</head>
+<body>
+<header>
+<a href="/" style="text-decoration: none;"><pre aria-hidden="true">{banner}</pre></a>
+</header>
+<main>
+<h1 class="sr-only">{title}</h1>
+<div id="{posts_div_id}">
+</div>
 </main>
 </body>
 </html>
@@ -73,9 +131,51 @@ def save_metadata(meta: dict) -> None:
         json.dump(meta, f, ensure_ascii=False, indent=4)
 
 
-def parse_markdown(markdown_path: Path) -> tuple[bs4.BeautifulSoup, str, str, str]:
+def escape_html(value: str) -> str:
+    """Escape text used in HTML text nodes and attributes."""
+    return html.escape(value, quote=True)
+
+
+def json_ld(data: dict) -> str:
+    """Serialize JSON-LD safely inside a script tag."""
+    return json.dumps(data, ensure_ascii=False, separators=(",", ":")).replace("</", "<\\/")
+
+
+def detect_language(*values: str) -> str:
+    """Use Traditional Chinese language metadata when CJK text is present."""
+    text = " ".join(values)
+    return "zh-TW" if re.search(r"[\u4e00-\u9fff]", text) else "en"
+
+
+def normalize_language(raw_lang: str) -> str:
+    """Normalize common language aliases to valid HTML language tags."""
+    lang = raw_lang.strip().replace("_", "-")
+    aliases = {
+        "en": "en",
+        "english": "en",
+        "zh": "zh-TW",
+        "zhtw": "zh-TW",
+        "zh-tw": "zh-TW",
+        "tw": "zh-TW",
+        "zh-hant": "zh-Hant",
+        "traditional-chinese": "zh-Hant",
+    }
+    return aliases.get(lang.lower(), lang)
+
+
+def extract_language_override(content: str) -> tuple[str, str | None]:
+    """Read and remove an optional '<!-- lang: ... -->' marker from markdown."""
+    match = LANG_COMMENT_RE.search(content)
+    if not match:
+        return content, None
+    lang = normalize_language(match.group(1))
+    return content[: match.start()] + content[match.end() :], lang
+
+
+def parse_markdown(markdown_path: Path) -> tuple[bs4.BeautifulSoup, str, str, str, str]:
     """Convert a markdown file to a BeautifulSoup object and extract metadata."""
     content = markdown_path.read_text(encoding="utf-8")
+    content, lang_override = extract_language_override(content)
     html_body = markdown.markdown(content, extensions=["fenced_code"])
     soup = bs4.BeautifulSoup(html_body, "html.parser")
 
@@ -94,7 +194,11 @@ def parse_markdown(markdown_path: Path) -> tuple[bs4.BeautifulSoup, str, str, st
         print("Error: <h6> (###### Subtitle) not found in markdown.")
         sys.exit(1)
 
-    return soup, title_tag.get_text(strip=True), subtitle_tag.get_text(strip=True), date_tag.get_text(strip=True)
+    title = title_tag.get_text(strip=True)
+    subtitle = subtitle_tag.get_text(strip=True)
+    post_lang = lang_override or detect_language(title, subtitle, soup.get_text(" ", strip=True))
+
+    return soup, title, subtitle, date_tag.get_text(strip=True), post_lang
 
 
 def process_images(soup: bs4.BeautifulSoup, post_id: int, markdown_path: Path) -> None:
@@ -144,10 +248,34 @@ def generate_post(markdown_path: Path, post_id: int) -> dict:
     """Generate a post HTML file from a markdown file. Returns post metadata dict."""
     print(f"Generating post {post_id} from '{markdown_path.name}'...")
 
-    soup, title, subtitle, date = parse_markdown(markdown_path)
+    soup, title, subtitle, date, post_lang = parse_markdown(markdown_path)
     process_images(soup, post_id, markdown_path)
 
-    header = HTML_HEADER_TEMPLATE.format(title=title, subtitle=subtitle, post_id=post_id, banner=ASCII_BANNER)
+    canonical = f"{BASE_URL}/posts/{post_id}.html"
+    published_date = _parse_post_date(date)
+    structured_data = {
+        "@context": "https://schema.org",
+        "@type": "BlogPosting",
+        "headline": title,
+        "description": subtitle,
+        "datePublished": published_date,
+        "dateModified": published_date,
+        "author": {"@type": "Person", "name": AUTHOR_NAME},
+        "publisher": {"@type": "Person", "name": AUTHOR_NAME},
+        "mainEntityOfPage": {"@type": "WebPage", "@id": canonical},
+        "url": canonical,
+    }
+    header = HTML_HEADER_TEMPLATE.format(
+        title=escape_html(title),
+        site_name=escape_html(SITE_NAME),
+        description=escape_html(subtitle),
+        author=escape_html(AUTHOR_NAME),
+        canonical=canonical,
+        published_date=published_date,
+        structured_data=json_ld(structured_data),
+        lang=post_lang,
+        banner=ASCII_BANNER,
+    )
     full_html = header + str(soup) + HTML_FOOTER
 
     final_soup = bs4.BeautifulSoup(full_html, "html.parser")
@@ -155,16 +283,43 @@ def generate_post(markdown_path: Path, post_id: int) -> dict:
     output_path.write_text(cast(str, final_soup.prettify()), encoding="utf-8")
     print(f"  -> wrote '{output_path}'")
 
-    return {"POSTID": post_id, "Title": title, "Subtitle": subtitle, "Date": date}
+    return {"POSTID": post_id, "Title": title, "Subtitle": subtitle, "Date": date, "Lang": post_lang}
 
 
 def rebuild_index(posts: list[dict]) -> None:
     """Rebuild index.html from scratch using the given list of post metadata dicts."""
     print("Rebuilding index.html...")
 
-    index_html = ROOT_DIR / "index.html"
-    with open(index_html, "r", encoding="utf-8") as f:
-        index_soup = bs4.BeautifulSoup(f, "html.parser")
+    structured_data = {
+        "@context": "https://schema.org",
+        "@type": "Blog",
+        "name": HOME_TITLE,
+        "description": HOME_DESCRIPTION,
+        "url": f"{BASE_URL}/",
+        "author": {"@type": "Person", "name": AUTHOR_NAME},
+        "blogPost": [
+            {
+                "@type": "BlogPosting",
+                "headline": post["Title"],
+                "description": post.get("Subtitle", ""),
+                "datePublished": _parse_post_date(post.get("Date", "")),
+                "url": f"{BASE_URL}/posts/{post['POSTID']}.html",
+            }
+            for post in sorted(posts, key=lambda p: p["POSTID"], reverse=True)
+        ],
+    }
+    index_html = INDEX_HTML_TEMPLATE.format(
+        title=escape_html(HOME_TITLE),
+        description=escape_html(HOME_DESCRIPTION),
+        author=escape_html(AUTHOR_NAME),
+        site_name=escape_html(SITE_NAME),
+        canonical=f"{BASE_URL}/",
+        structured_data=json_ld(structured_data),
+        banner=ASCII_BANNER,
+        posts_div_id=INDEX_POSTS_DIV_ID,
+    )
+    index_soup = bs4.BeautifulSoup(index_html, "html.parser")
+    index_path = ROOT_DIR / "index.html"
 
     posts_div = index_soup.find(id=INDEX_POSTS_DIV_ID)
     if not isinstance(posts_div, Tag):
@@ -180,7 +335,9 @@ def rebuild_index(posts: list[dict]) -> None:
         div = index_soup.new_tag("div")
 
         h2 = index_soup.new_tag("h2")
-        h2.string = post["Title"]
+        title_link = index_soup.new_tag("a", href=f"/posts/{post['POSTID']}.html")
+        title_link.string = post["Title"]
+        h2.append(title_link)
 
         h6 = index_soup.new_tag("h6")
         h6.string = post.get("Subtitle", "")
@@ -197,7 +354,7 @@ def rebuild_index(posts: list[dict]) -> None:
     posts_div.append(index_soup.new_tag("hr"))
     posts_div.append(index_soup.new_tag("br"))
 
-    with open(index_html, "w", encoding="utf-8") as f:
+    with open(index_path, "w", encoding="utf-8") as f:
         f.write(cast(str, index_soup.prettify()))
     print("  -> index.html updated.")
 
@@ -293,7 +450,7 @@ def cmd_regen() -> None:
 # ── Entry point ──────────────────────────────────────────────────────────────
 
 if len(sys.argv) < 2:
-    print(f"Usage:")
+    print("Usage:")
     print(f"  uv run {Path(__file__).name} <markdown_file>   # add a new post")
     print(f"  uv run {Path(__file__).name} --regen           # regenerate all posts")
     sys.exit(1)
