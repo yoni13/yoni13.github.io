@@ -1,14 +1,16 @@
-import markdown
-import bs4
+import html
+import json
+import re
+import shutil
+import sys
+from datetime import date as Date
 from pathlib import Path
 from typing import cast
+
+import bs4
+import markdown
+import rcssmin
 from bs4.element import Tag
-from datetime import date as Date
-import json
-import sys
-import shutil
-import re
-import html
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 ROOT_DIR = SCRIPT_DIR.parent
@@ -25,11 +27,15 @@ SITEMAP_PATH = ROOT_DIR / "sitemap.xml"
 
 POSTS_METADATA_PATH = ROOT_DIR / "posts" / "post.json"
 GENERATED_POSTS_DIR = ROOT_DIR / "posts"
+STATIC_DIR = ROOT_DIR / "static"
+STATIC_MINIFIED_DIR = ROOT_DIR / "static_minified"
 STATIC_IMAGES_DIR = ROOT_DIR / "static" / "images"
 MARKDOWNS_DIR = ROOT_DIR / "markdowns"
 INDEX_HTML_PATH = ROOT_DIR / "index.html"
 INDEX_POSTS_DIV_ID = "indexposts"
-LANG_COMMENT_RE = re.compile(r"<!--\s*lang\s*:\s*([A-Za-z0-9_-]+)\s*-->\s*", re.IGNORECASE)
+LANG_COMMENT_RE = re.compile(
+    r"<!--\s*lang\s*:\s*([A-Za-z0-9_-]+)\s*-->\s*", re.IGNORECASE
+)
 
 ASCII_BANNER = r"""
     _                           _                         _       _     _
@@ -62,7 +68,7 @@ HTML_HEADER_TEMPLATE = """\
     <meta name="twitter:card" content="summary">
     <meta name="twitter:title" content="{title} | {site_name}">
     <meta name="twitter:description" content="{description}">
-    <link rel="stylesheet" href="/static/index.css">
+    <link rel="stylesheet" href="/static_minified/index.css">
     <link rel="canonical" href="{canonical}">
     <script type="application/ld+json">{structured_data}</script>
 </head>
@@ -99,7 +105,7 @@ INDEX_HTML_TEMPLATE = """\
     <meta name="twitter:card" content="summary">
     <meta name="twitter:title" content="{title}">
     <meta name="twitter:description" content="{description}">
-    <link rel="stylesheet" href="/static/index.css">
+    <link rel="stylesheet" href="/static_minified/index.css">
     <link rel="canonical" href="{canonical}">
     <link rel="sitemap" type="application/xml" href="/sitemap.xml">
     <script type="application/ld+json">{structured_data}</script>
@@ -116,6 +122,27 @@ INDEX_HTML_TEMPLATE = """\
 </body>
 </html>
 """
+
+
+def minify_static() -> None:
+    """Minify CSS and copy fonts from static/ into static_minified/."""
+    STATIC_MINIFIED_DIR.mkdir(exist_ok=True)
+
+    # Minify CSS, rewriting the internal font URL to the minified path.
+    css_src = STATIC_DIR / "index.css"
+    css_dst = STATIC_MINIFIED_DIR / "index.css"
+    css = css_src.read_text(encoding="utf-8")
+    css = css.replace(
+        "/static/RobotoMono-Regular.ttf", "/static_minified/RobotoMono-Regular.ttf"
+    )
+    css_dst.write_text(rcssmin.cssmin(css), encoding="utf-8")
+    print(f"  -> minified CSS '{css_src.name}' → '{css_dst}'")
+
+    # Copy font file as-is.
+    font_src = STATIC_DIR / "RobotoMono-Regular.ttf"
+    font_dst = STATIC_MINIFIED_DIR / "RobotoMono-Regular.ttf"
+    shutil.copy2(font_src, font_dst)
+    print(f"  -> copied font '{font_src.name}' → '{font_dst}'")
 
 
 def load_metadata() -> dict:
@@ -138,7 +165,9 @@ def escape_html(value: str) -> str:
 
 def json_ld(data: dict) -> str:
     """Serialize JSON-LD safely inside a script tag."""
-    return json.dumps(data, ensure_ascii=False, separators=(",", ":")).replace("</", "<\\/")
+    return json.dumps(data, ensure_ascii=False, separators=(",", ":")).replace(
+        "</", "<\\/"
+    )
 
 
 def detect_language(*values: str) -> str:
@@ -196,7 +225,9 @@ def parse_markdown(markdown_path: Path) -> tuple[bs4.BeautifulSoup, str, str, st
 
     title = title_tag.get_text(strip=True)
     subtitle = subtitle_tag.get_text(strip=True)
-    post_lang = lang_override or detect_language(title, subtitle, soup.get_text(" ", strip=True))
+    post_lang = lang_override or detect_language(
+        title, subtitle, soup.get_text(" ", strip=True)
+    )
 
     return soup, title, subtitle, date_tag.get_text(strip=True), post_lang
 
@@ -222,7 +253,9 @@ def process_images(soup: bs4.BeautifulSoup, post_id: int, markdown_path: Path) -
             existing = sorted((STATIC_IMAGES_DIR / str(post_id)).glob(f"img{idx}.*"))
             if existing:
                 img_tag["src"] = f"/static/images/{post_id}/{existing[0].name}"
-                print(f"  -> image already at '/static/images/{post_id}/{existing[0].name}'")
+                print(
+                    f"  -> image already at '/static/images/{post_id}/{existing[0].name}'"
+                )
             else:
                 print(f"  Warning: image not found at '{original_path}', skipping.")
             continue
@@ -283,7 +316,13 @@ def generate_post(markdown_path: Path, post_id: int) -> dict:
     output_path.write_text(cast(str, final_soup.prettify()), encoding="utf-8")
     print(f"  -> wrote '{output_path}'")
 
-    return {"POSTID": post_id, "Title": title, "Subtitle": subtitle, "Date": date, "Lang": post_lang}
+    return {
+        "POSTID": post_id,
+        "Title": title,
+        "Subtitle": subtitle,
+        "Date": date,
+        "Lang": post_lang,
+    }
 
 
 def rebuild_index(posts: list[dict]) -> None:
@@ -375,12 +414,16 @@ def generate_sitemap(posts: list[dict]) -> None:
     urls: list[str] = []
 
     # Home page — always today's date as lastmod.
-    urls.append(f"  <url>\n    <loc>{BASE_URL}/</loc>\n    <lastmod>{today}</lastmod>\n  </url>")
+    urls.append(
+        f"  <url>\n    <loc>{BASE_URL}/</loc>\n    <lastmod>{today}</lastmod>\n  </url>"
+    )
 
     for post in sorted(posts, key=lambda p: p["POSTID"]):
         loc = f"{BASE_URL}/posts/{post['POSTID']}.html"
         lastmod = _parse_post_date(post.get("Date", ""))
-        urls.append(f"  <url>\n    <loc>{loc}</loc>\n    <lastmod>{lastmod}</lastmod>\n  </url>")
+        urls.append(
+            f"  <url>\n    <loc>{loc}</loc>\n    <lastmod>{lastmod}</lastmod>\n  </url>"
+        )
 
     xml = (
         '<?xml version="1.0" encoding="UTF-8"?>\n'
@@ -414,6 +457,7 @@ def cmd_add(markdown_path: Path) -> None:
 
     rebuild_index(meta["posts"])
     generate_sitemap([p for p in meta["posts"] if p])
+    minify_static()
     print("--- Done ---")
 
 
@@ -444,6 +488,7 @@ def cmd_regen() -> None:
 
     rebuild_index(all_posts)
     generate_sitemap(all_posts)
+    minify_static()
     print(f"--- Regenerated {len(all_posts)} posts ---")
 
 
