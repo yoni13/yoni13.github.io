@@ -13,7 +13,7 @@ import html
 SCRIPT_DIR = Path(__file__).resolve().parent
 ROOT_DIR = SCRIPT_DIR.parent
 
-BASE_URL = "https://yoni13.github.io"
+BASE_URL = "https://我.tw"
 SITE_NAME = "Legendyang's Blog"
 AUTHOR_NAME = "legendyang"
 HOME_TITLE = "legendyang's Blog"
